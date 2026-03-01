@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ShinedeBox</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <div class="bg-glow bg-glow-a"></div>
+    <div class="bg-glow bg-glow-b"></div>
+
+    <header class="topbar">
+      <div>
+        <h1>ShinedeBox</h1>
+        <p class="subtitle">Gestion admin des uploads</p>
+      </div>
+
+      <div id="auth" class="auth-box">
+        <div id="auth-status">Verification...</div>
+        <div id="auth-actions" class="actions">
+          <form id="login-form" class="hidden auth-form">
+            <input id="login-username" name="username" type="text" autocomplete="username" placeholder="Username" />
+            <input id="login-password" name="password" type="password" autocomplete="current-password" placeholder="Password" />
+            <button type="submit">Se connecter</button>
+          </form>
+          <button id="refresh-auth-btn" class="hidden" type="button">Rafraichir</button>
+          <button id="logout-btn" class="hidden danger-soft" type="button">Se deconnecter</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section id="access-note" class="card hidden">
+        <h2>Acces restreint</h2>
+        <p>Seuls les administrateurs Shinederu peuvent gerer les fichiers.</p>
+      </section>
+
+      <section id="uploader" class="card hidden">
+        <h2>Uploader des fichiers</h2>
+
+        <div id="dropzone" class="dropzone" role="button" tabindex="0" aria-label="Zone de depot">
+          <p class="drop-main">Glisse-depose tes fichiers ici</p>
+          <p class="drop-sub">ou clique pour en selectionner</p>
+        </div>
+
+        <form id="upload-form" class="upload-form">
+          <input type="file" id="files" name="files[]" multiple />
+          <button id="upload-submit-btn" type="submit">Envoyer</button>
+          <button id="cancel-upload-btn" class="hidden danger-soft" type="button">Annuler l'upload</button>
+        </form>
+
+        <div id="selected-files-meta" class="hint">Aucun fichier selectionne.</div>
+
+        <div id="progress" class="progress hidden">
+          <div id="progress-bar" class="progress-bar"></div>
+          <span id="progress-text"></span>
+        </div>
+        <div id="upload-errors" class="errors"></div>
+      </section>
+
+      <section class="card">
+        <div class="files-header">
+          <h2>Fichiers</h2>
+          <div id="files-actions" class="hint hidden">Actions rapides: copier, renommer, supprimer.</div>
+        </div>
+
+        <div class="toolbar">
+          <input id="search-input" type="search" placeholder="Rechercher un fichier..." />
+          <select id="sort-select">
+            <option value="newest">Plus recents</option>
+            <option value="oldest">Plus anciens</option>
+            <option value="name_asc">Nom A-Z</option>
+            <option value="name_desc">Nom Z-A</option>
+            <option value="size_desc">Taille decroissante</option>
+          </select>
+          <button id="refresh-files-btn" type="button">Rafraichir</button>
+          <button id="select-all-btn" type="button">Tout selectionner</button>
+          <button id="clear-selection-btn" type="button">Effacer selection</button>
+          <button id="delete-selected-btn" class="danger-soft" type="button">Supprimer selection</button>
+        </div>
+
+        <div id="selection-meta" class="hint">0 selection</div>
+        <ul id="file-list" class="files"></ul>
+        <div id="list-errors" class="errors"></div>
+      </section>
+    </main>
+
+    <footer>
+      <small>© ShinedeBox</small>
+    </footer>
+
+    <div id="toast-container" class="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+    <script>
+      window.__SHINEDEBOX_API_BASE__ = "https://api.shinederu.lol/box";
+      window.__SHINEDEBOX_AUTH_API_BASE__ = "https://api.shinederu.lol/auth";
+    </script>
+    <script src="/script.js"></script>
+  </body>
+</html>
+
