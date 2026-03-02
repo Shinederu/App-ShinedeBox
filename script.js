@@ -1,6 +1,6 @@
-const configuredApiBase = window.__SHINEDEBOX_API_BASE__ || "https://api.shinederu.lol/box";
+const configuredApiBase = window.__SHINEDEBOX_API_BASE__ || "https://api.shinederu.ch/box";
 const apiBase = String(configuredApiBase).replace(/\/+$/, "");
-const configuredAuthApiBase = window.__SHINEDEBOX_AUTH_API_BASE__ || "https://api.shinederu.lol/auth";
+const configuredAuthApiBase = window.__SHINEDEBOX_AUTH_API_BASE__ || "https://api.shinederu.ch/auth";
 const authApiBase = String(configuredAuthApiBase).replace(/\/+$/, "");
 
 let currentUploadXhr = null;

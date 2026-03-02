@@ -7,13 +7,13 @@ Frontend statique de ShinedeBox (admin file manager), connecte au backend `API/b
 - `index.html`
 - `script.js`
 - `style.css`
-- `Nginx/box.shinederu.lol.conf` (exemple de vhost frontend)
+- `Nginx/box.shinederu.ch.conf` (exemple de vhost frontend)
 
 ## API cible
 
 Par defaut, le front appelle:
 
-- `https://api.shinederu.lol/box`
+- `https://api.shinederu.ch/box`
 
 Override possible dans `index.html`:
 
@@ -22,7 +22,7 @@ Override possible dans `index.html`:
 
 ## Authentification
 
-- Connexion via API auth centralisee: `https://api.shinederu.lol/auth`
+- Connexion via API auth centralisee: `https://api.shinederu.ch/auth`
 - Session partagee domaine via cookie `sid`
 - Acces metier reserve aux admins (controle effectue cote `API/box`)
 
