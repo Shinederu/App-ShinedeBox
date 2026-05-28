@@ -24,7 +24,7 @@ Override possible dans `index.html`:
 
 - Connexion via API auth centralisee: `https://api.shinederu.ch/auth`
 - Session partagee domaine via cookie `sid`
-- Acces metier reserve aux admins (controle effectue cote `API/box`)
+- Acces metier reserve au droit central `box.files.manage` ou au super-admin global (controle effectue cote `API/box`)
 
 ## Fonctionnalites UI
 
@@ -41,4 +41,3 @@ Override possible dans `index.html`:
 ```bash
 node --check script.js
 ```
-
