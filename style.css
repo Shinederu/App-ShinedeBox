@@ -435,6 +435,13 @@ tbody tr:last-child td {
   padding: 0;
   background: transparent;
   border: 0;
+  white-space: normal;
+}
+
+.file-title {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  text-align: left;
 }
 
 .file-ext {
@@ -455,6 +462,19 @@ tbody tr:last-child td {
   display: flex;
   gap: 8px;
   justify-content: flex-end;
+}
+
+.row-actions a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text);
+  text-decoration: none;
+  white-space: nowrap;
+  background: var(--surface-muted);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-weight: 800;
 }
 
 .row-actions a,
@@ -580,9 +600,41 @@ dd {
   border-color: rgba(255, 125, 109, 0.45);
 }
 
+@media (max-width: 1450px) {
+  .workspace {
+    grid-template-columns: minmax(0, 1fr) 340px;
+  }
+
+  .files-surface {
+    order: 1;
+  }
+
+  .detail-panel {
+    order: 2;
+  }
+
+  .upload-surface {
+    grid-column: 1 / -1;
+    order: 3;
+  }
+}
+
 @media (max-width: 1180px) {
   .workspace {
     grid-template-columns: 1fr;
+  }
+
+  .files-surface {
+    order: 1;
+  }
+
+  .detail-panel {
+    order: 2;
+  }
+
+  .upload-surface {
+    grid-column: auto;
+    order: 3;
   }
 
   .metrics-row {
@@ -592,7 +644,7 @@ dd {
 
 @media (max-width: 760px) {
   .app-frame {
-    padding: 18px;
+    padding: 14px;
   }
 
   .app-header,
@@ -601,20 +653,228 @@ dd {
     flex-direction: column;
   }
 
-  .header-actions,
-  .header-actions > *,
+  .app-header {
+    gap: 14px;
+    margin-bottom: 16px;
+  }
+
+  .brand-mark {
+    width: 42px;
+    height: 42px;
+  }
+
+  h1 {
+    font-size: 1.65rem;
+  }
+
+  h2 {
+    font-size: 1.2rem;
+  }
+
+  .header-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
+  }
+
+  .session-card {
+    grid-column: 1 / -1;
+  }
+
+  .header-actions > button,
+  .session-card {
+    width: 100%;
+  }
+
+  .auth-view,
+  .share-view,
+  .upload-surface,
+  .files-surface,
+  .detail-panel {
+    padding: 16px;
+  }
+
+  .auth-view,
+  .share-view {
+    margin-top: 4vh;
+  }
+
+  .box-view,
+  .workspace {
+    gap: 14px;
+  }
+
+  .metrics-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .metric {
+    padding: 11px;
+    box-shadow: none;
+  }
+
+  .metric strong {
+    font-size: 1.12rem;
+  }
+
+  .metric span {
+    font-size: 0.76rem;
+  }
+
+  .files-surface {
+    order: 1;
+  }
+
+  .detail-panel {
+    order: 2;
+  }
+
+  .upload-surface {
+    order: 3;
+  }
+
+  .detail-panel.is-empty {
+    display: none;
+  }
+
   .table-actions,
   .table-actions input,
   .table-actions select,
-  .row-actions,
   .share-list li,
-  .share-form,
-  .metrics-row {
+  .share-form {
     width: 100%;
     grid-template-columns: 1fr;
   }
 
+  .table-actions {
+    display: grid;
+    gap: 8px;
+  }
+
+  .table-wrap {
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+  }
+
+  table,
+  tbody,
+  tr,
+  td {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
+
+  table {
+    border-collapse: separate;
+  }
+
+  thead {
+    display: none;
+  }
+
+  tbody {
+    display: grid;
+    gap: 10px;
+  }
+
+  tbody tr,
+  tbody tr:last-child {
+    display: grid;
+    gap: 9px;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+  }
+
+  tbody tr.is-selected {
+    border-color: rgba(255, 191, 59, 0.55);
+  }
+
+  td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 0;
+    border: 0;
+    color: var(--text);
+    text-align: right;
+  }
+
+  td::before {
+    content: attr(data-label);
+    color: var(--muted);
+    font-size: 0.76rem;
+    font-weight: 900;
+    text-align: left;
+    text-transform: uppercase;
+  }
+
+  td:first-child {
+    display: block;
+    text-align: left;
+  }
+
+  td:first-child::before,
+  .row-actions::before {
+    display: none;
+  }
+
+  .file-name-button {
+    align-items: flex-start;
+    min-height: 42px;
+  }
+
+  .file-ext {
+    flex: 0 0 auto;
+  }
+
   .row-actions {
-    justify-content: flex-start;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    justify-content: stretch;
+    width: 100%;
+  }
+
+  .row-actions a,
+  .row-actions button {
+    min-height: 40px;
+  }
+
+  .dropzone {
+    min-height: 118px;
+  }
+
+  .detail-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .share-list li {
+    grid-template-columns: 1fr;
+  }
+
+  .toast-container {
+    right: 12px;
+    bottom: 12px;
+    left: 12px;
+  }
+
+  .toast {
+    width: 100%;
+  }
+}
+
+@media (max-width: 430px) {
+  .app-frame {
+    padding: 10px;
+  }
+
+  .row-actions {
+    grid-template-columns: 1fr;
   }
 }

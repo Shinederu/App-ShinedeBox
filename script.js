@@ -307,16 +307,16 @@ function renderFiles() {
     const row = document.createElement("tr");
     row.className = file.id === state.selectedFileId ? "is-selected" : "";
     row.innerHTML = `
-      <td>
+      <td data-label="Nom">
         <button class="file-name-button" type="button" data-select="${file.id}">
           <span class="file-ext">${getExtension(file.name)}</span>
-          <span>${escapeHtml(file.name)}</span>
+          <span class="file-title">${escapeHtml(file.name)}</span>
         </button>
       </td>
-      <td>${bytesFmt(file.size)}</td>
-      <td>${file.active_share_count || 0}</td>
-      <td>${dateFmt(file.created_at)}</td>
-      <td class="row-actions">
+      <td data-label="Taille">${bytesFmt(file.size)}</td>
+      <td data-label="Partages">${file.active_share_count || 0}</td>
+      <td data-label="Ajoute">${dateFmt(file.created_at)}</td>
+      <td class="row-actions" data-label="Actions">
         <a href="${file.download_url}" target="_blank" rel="noopener noreferrer">Telecharger</a>
         <button type="button" data-share="${file.id}">Partager</button>
       </td>
@@ -357,6 +357,7 @@ function selectedFile() {
 
 function renderDetail() {
   const file = selectedFile();
+  qs("#detail-panel").classList.toggle("is-empty", !file);
   qs("#detail-title").textContent = file ? file.name : "Aucun fichier";
   qs("#detail-size").textContent = file ? bytesFmt(file.size) : "-";
   qs("#detail-type").textContent = file ? file.mime_type || file.extension || "-" : "-";
