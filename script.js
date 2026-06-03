@@ -683,12 +683,14 @@ async function renderPublicShare(token) {
     qs("#share-type").textContent = share.file.mime_type || share.file.extension || "-";
     qs("#share-expiry").textContent = share.expires_at ? dateFmt(share.expires_at) : "Sans expiration";
     qs("#share-download").href = share.download_url;
+    setHidden(qs("#share-download"), false);
   } catch (error) {
     qs("#share-title").textContent = "Lien indisponible";
     qs("#share-size").textContent = "-";
     qs("#share-type").textContent = "-";
     qs("#share-expiry").textContent = error.message;
     qs("#share-download").removeAttribute("href");
+    setHidden(qs("#share-download"), true);
   }
 }
 
