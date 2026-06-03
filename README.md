@@ -37,7 +37,8 @@ Override possible dans `index.html`:
 - Bibliotheque avec recherche, tri et statistiques.
 - Panneau detail pour telecharger, renommer ou supprimer un fichier.
 - Creation, copie et revocation de liens publics.
-- Vue publique `?share=<token>` pour telechargement sans session.
+- Vue publique `/s/<token>/<nom-du-fichier>` pour telechargement sans session.
+- Compatibilite conservee avec l'ancien format `?share=<token>`.
 - Rafraichissement automatique toutes les 15 secondes si la session admin est active.
 
 ## Verification locale

@@ -696,6 +696,17 @@ async function renderPublicShare(token) {
   }
 }
 
+function getShareTokenFromLocation() {
+  const params = new URLSearchParams(window.location.search);
+  const queryToken = params.get("share");
+  if (queryToken) {
+    return queryToken;
+  }
+
+  const match = window.location.pathname.match(/^\/s\/([a-f0-9]{40})(?:\/|$)/i);
+  return match ? match[1] : null;
+}
+
 function bindUi() {
   qs("#login-form").addEventListener("submit", login);
   qs("#logout-btn").addEventListener("click", logout);
@@ -720,7 +731,7 @@ window.addEventListener("DOMContentLoaded", () => {
   bindUi();
   updateSelectedFilesMeta();
 
-  const shareToken = new URLSearchParams(window.location.search).get("share");
+  const shareToken = getShareTokenFromLocation();
   if (shareToken) {
     void renderPublicShare(shareToken);
     return;
