@@ -581,7 +581,8 @@ async function uploadFiles(event) {
     });
     const failures = (result.results || []).filter((entry) => !entry.success);
     if (failures.length) {
-      showToast(`${failures.length} upload(s) en erreur`, "error");
+      const firstError = failures[0]?.error ? `: ${failures[0].error}` : "";
+      showToast(`${failures.length} upload(s) en erreur${firstError}`, "error");
     } else {
       showToast("Upload termine", "success");
     }
