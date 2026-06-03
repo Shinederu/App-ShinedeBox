@@ -1,718 +1,726 @@
-const configuredApiBase = window.__SHINEDEBOX_API_BASE__ || "https://api.shinederu.ch/box";
-const apiBase = String(configuredApiBase).replace(/\/+$/, "");
-const configuredAuthApiBase = window.__SHINEDEBOX_AUTH_API_BASE__ || "https://api.shinederu.ch/auth";
-const authApiBase = String(configuredAuthApiBase).replace(/\/+$/, "");
+const apiBase = String(window.__SHINEDEBOX_API_BASE__ || "https://api.shinederu.ch/box").replace(/\/+$/, "");
+const authApiBase = String(window.__SHINEDEBOX_AUTH_API_BASE__ || "https://api.shinederu.ch/auth").replace(/\/+$/, "");
+const autoRefreshMs = 15000;
 
-let currentUploadXhr = null;
-let filesCache = [];
-let selectedIds = new Set();
-let autoRefreshTimer = null;
-let isAdminSession = false;
+const state = {
+  auth: null,
+  files: [],
+  stats: null,
+  selectedFileId: null,
+  shares: [],
+  uploadXhr: null,
+  refreshTimer: null,
+};
 
-function qs(sel) {
-  return document.querySelector(sel);
+function qs(selector) {
+  return document.querySelector(selector);
 }
 
-function setHidden(el, hidden) {
-  if (!el) {
-    return;
+function qsa(selector) {
+  return Array.from(document.querySelectorAll(selector));
+}
+
+function setHidden(element, hidden) {
+  if (element) {
+    element.classList.toggle("hidden", Boolean(hidden));
   }
-  el.classList.toggle("hidden", !!hidden);
 }
 
-function bytesFmt(n) {
-  const units = ["B", "KB", "MB", "GB", "TB"];
-  let i = 0;
-  let v = Number(n) || 0;
-  while (v >= 1024 && i < units.length - 1) {
-    v /= 1024;
-    i++;
-  }
-  return `${v.toFixed(v >= 10 || i === 0 ? 0 : 1)} ${units[i]}`;
-}
-
-function showToast(message, type = "info", ttlMs = 3200) {
+function showToast(message, kind = "info") {
   const container = qs("#toast-container");
   if (!container) {
     return;
   }
 
   const toast = document.createElement("div");
-  toast.className = `toast ${type}`;
+  toast.className = `toast ${kind}`;
   toast.textContent = message;
   container.appendChild(toast);
 
-  setTimeout(() => {
-    toast.remove();
-  }, ttlMs);
+  window.setTimeout(() => toast.remove(), 3600);
 }
 
-function getExt(name) {
-  const idx = name.lastIndexOf(".");
-  if (idx < 0) {
-    return "FILE";
-  }
-  return name.slice(idx + 1).toUpperCase().slice(0, 6) || "FILE";
-}
-
-function setSelectionMeta() {
-  const meta = qs("#selection-meta");
-  if (!meta) {
-    return;
-  }
-  meta.textContent = `${selectedIds.size} selection`;
-}
-
-function setSelectedFilesMeta() {
-  const input = qs("#files");
-  const el = qs("#selected-files-meta");
-  if (!input || !el) {
+function showNotice(message, kind = "info") {
+  const notice = qs("#notice");
+  if (!notice) {
     return;
   }
 
-  const count = input.files ? input.files.length : 0;
-  if (!count) {
-    el.textContent = "Aucun fichier selectionne.";
-    return;
+  notice.className = `notice ${kind}`;
+  notice.textContent = message;
+  setHidden(notice, false);
+
+  window.setTimeout(() => setHidden(notice, true), 4200);
+}
+
+function bytesFmt(value) {
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let index = 0;
+  let size = Number(value) || 0;
+  while (size >= 1024 && index < units.length - 1) {
+    size /= 1024;
+    index += 1;
   }
-  let total = 0;
-  for (const f of input.files) {
-    total += f.size || 0;
+  return `${size.toFixed(size >= 10 || index === 0 ? 0 : 1)} ${units[index]}`;
+}
+
+function dateFmt(value) {
+  if (!value) {
+    return "-";
   }
-  el.textContent = `${count} fichier(s) selectionne(s) - ${bytesFmt(total)}`;
+  const date = new Date(String(value).replace(" ", "T"));
+  if (Number.isNaN(date.getTime())) {
+    return String(value);
+  }
+  return new Intl.DateTimeFormat("fr-CH", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
+}
+
+function getExtension(name) {
+  const index = String(name || "").lastIndexOf(".");
+  return index >= 0 ? String(name).slice(index + 1).toUpperCase().slice(0, 8) : "FILE";
 }
 
 async function apiFetch(path, options = {}) {
-  const res = await fetch(`${apiBase}${path}`, {
-    headers: { Accept: "application/json", ...(options.headers || {}) },
+  const response = await fetch(`${apiBase}${path}`, {
     credentials: "include",
+    headers: {
+      Accept: "application/json",
+      ...(options.headers || {}),
+    },
     ...options,
   });
 
-  const ct = res.headers.get("content-type") || "";
-  const isJson = ct.includes("application/json");
-  const body = isJson ? await res.json() : await res.text();
+  const contentType = response.headers.get("content-type") || "";
+  const body = contentType.includes("application/json") ? await response.json() : await response.text();
 
-  if (!res.ok || (isJson && body && body.success === false)) {
-    const message = isJson ? body.error || JSON.stringify(body) : body || `HTTP ${res.status}`;
-    const err = new Error(message || `HTTP ${res.status}`);
-    err.status = res.status;
-    err.body = body;
-    throw err;
+  if (!response.ok || (body && typeof body === "object" && body.success === false)) {
+    const message = body && typeof body === "object" ? body.error || body.message : body;
+    const error = new Error(message || `HTTP ${response.status}`);
+    error.status = response.status;
+    error.body = body;
+    throw error;
   }
 
-  return isJson ? body : { raw: body };
+  return body;
 }
 
-async function authApiFetch(path, options = {}) {
-  const res = await fetch(`${authApiBase}${path}`, {
-    headers: { Accept: "application/json", ...(options.headers || {}) },
+async function authFetch(path, options = {}) {
+  const response = await fetch(`${authApiBase}${path}`, {
     credentials: "include",
+    headers: {
+      Accept: "application/json",
+      ...(options.headers || {}),
+    },
     ...options,
   });
 
-  const ct = res.headers.get("content-type") || "";
-  const isJson = ct.includes("application/json");
-  const body = isJson ? await res.json() : await res.text();
+  const contentType = response.headers.get("content-type") || "";
+  const body = contentType.includes("application/json") ? await response.json() : await response.text();
 
-  if (!res.ok || (isJson && body && body.success === false)) {
-    const message = isJson ? body.error || body.message || JSON.stringify(body) : body || `HTTP ${res.status}`;
-    const err = new Error(message || `HTTP ${res.status}`);
-    err.status = res.status;
-    err.body = body;
-    throw err;
+  if (!response.ok || (body && typeof body === "object" && body.success === false)) {
+    const message = body && typeof body === "object" ? body.error || body.message : body;
+    const error = new Error(message || `HTTP ${response.status}`);
+    error.status = response.status;
+    error.body = body;
+    throw error;
   }
 
-  return isJson ? body : { raw: body };
+  return body;
+}
+
+function setView(name) {
+  setHidden(qs("#share-view"), name !== "share");
+  setHidden(qs("#login-view"), name !== "login");
+  setHidden(qs("#access-view"), name !== "access");
+  setHidden(qs("#box-view"), name !== "box");
+  setHidden(qs("#session-actions"), name !== "box" && name !== "access");
 }
 
 function startAutoRefresh() {
   stopAutoRefresh();
-  autoRefreshTimer = setInterval(async () => {
-    if (!isAdminSession || currentUploadXhr) {
+  state.refreshTimer = window.setInterval(() => {
+    if (!state.auth?.is_admin || document.visibilityState === "hidden" || state.uploadXhr) {
       return;
     }
-    try {
-      await refreshList({ silent: true });
-    } catch (_) {
-      // no-op
-    }
-  }, 20000);
+    void refreshFiles({ silent: true });
+  }, autoRefreshMs);
 }
 
 function stopAutoRefresh() {
-  if (!autoRefreshTimer) {
-    return;
+  if (state.refreshTimer) {
+    window.clearInterval(state.refreshTimer);
+    state.refreshTimer = null;
   }
-  clearInterval(autoRefreshTimer);
-  autoRefreshTimer = null;
-}
-
-function applyAuthUi(auth) {
-  const authStatus = qs("#auth-status");
-  const loginForm = qs("#login-form");
-  const refreshAuthBtn = qs("#refresh-auth-btn");
-  const logoutBtn = qs("#logout-btn");
-  const uploader = qs("#uploader");
-  const filesActions = qs("#files-actions");
-  const accessNote = qs("#access-note");
-
-  setHidden(refreshAuthBtn, false);
-
-  if (!auth || !auth.authenticated) {
-    isAdminSession = false;
-    stopAutoRefresh();
-    authStatus.textContent = "Non connecte. Connexion admin requise.";
-    setHidden(loginForm, false);
-    setHidden(logoutBtn, true);
-    setHidden(uploader, true);
-    setHidden(filesActions, true);
-    setHidden(accessNote, false);
-    filesCache = [];
-    selectedIds.clear();
-    renderFiles();
-    return;
-  }
-
-  const username = auth.user && auth.user.username ? auth.user.username : "inconnu";
-  setHidden(logoutBtn, false);
-  setHidden(loginForm, true);
-
-  if (!auth.is_admin) {
-    isAdminSession = false;
-    stopAutoRefresh();
-    authStatus.textContent = `Connecte: ${username} (non admin)`;
-    setHidden(uploader, true);
-    setHidden(filesActions, true);
-    setHidden(accessNote, false);
-    filesCache = [];
-    selectedIds.clear();
-    renderFiles();
-    return;
-  }
-
-  isAdminSession = true;
-  startAutoRefresh();
-  authStatus.textContent = `Connecte admin: ${username}`;
-  setHidden(uploader, false);
-  setHidden(filesActions, false);
-  setHidden(accessNote, true);
-}
-
-async function fetchAuthStatus() {
-  return apiFetch("/auth.php?action=status");
 }
 
 async function refreshStatus() {
-  const listErrors = qs("#list-errors");
   try {
-    const auth = await fetchAuthStatus();
-    applyAuthUi(auth);
-    if (auth.authenticated && auth.is_admin) {
-      await refreshList({ silent: true });
+    const auth = await apiFetch("/auth.php?action=status");
+    state.auth = auth;
+
+    if (!auth.authenticated) {
+      stopAutoRefresh();
+      setView("login");
       return;
     }
-    listErrors.textContent = "";
-  } catch (e) {
-    isAdminSession = false;
+
+    qs("#session-name").textContent = auth.user?.username || "Session";
+    qs("#session-role").textContent = auth.is_admin ? "Box admin" : "Sans acces Box";
+
+    if (!auth.is_admin) {
+      stopAutoRefresh();
+      setView("access");
+      return;
+    }
+
+    setView("box");
+    startAutoRefresh();
+    await refreshFiles({ silent: true });
+  } catch (error) {
     stopAutoRefresh();
-    qs("#auth-status").textContent = "Erreur de verification de session";
-    setHidden(qs("#login-form"), false);
-    setHidden(qs("#uploader"), true);
-    setHidden(qs("#files-actions"), true);
-    setHidden(qs("#access-note"), false);
-    filesCache = [];
-    selectedIds.clear();
-    renderFiles();
-    listErrors.textContent = e.message || String(e);
+    setView("login");
+    showNotice(`Erreur de verification de session: ${error.message}`, "error");
   }
 }
 
-async function doLogin(ev) {
-  ev.preventDefault();
-  const username = (qs("#login-username")?.value || "").trim();
-  const password = qs("#login-password")?.value || "";
+async function login(event) {
+  event.preventDefault();
+  const username = qs("#login-username").value.trim();
+  const password = qs("#login-password").value;
 
   if (!username || !password) {
-    qs("#auth-status").textContent = "Username et password requis.";
+    showNotice("Identifiant et mot de passe requis.", "error");
     return;
   }
 
   try {
-    await authApiFetch("/?action=login", {
+    await authFetch("/?action=login", {
       method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" },
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
       body: new URLSearchParams({ action: "login", username, password }).toString(),
     });
     qs("#login-password").value = "";
-    showToast("Connexion reussie", "success");
+    showToast("Session ouverte", "success");
     await refreshStatus();
-  } catch (e) {
-    qs("#auth-status").textContent = `Connexion echouee: ${e.message}`;
-    showToast(`Connexion echouee: ${e.message}`, "error", 4200);
+  } catch (error) {
+    showNotice(`Connexion refusee: ${error.message}`, "error");
   }
 }
 
-async function doLogout() {
+async function logout() {
   try {
-    await authApiFetch("/", {
+    await authFetch("/", {
       method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" },
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
       body: new URLSearchParams({ action: "logout" }).toString(),
     });
     await apiFetch("/auth.php?action=logout");
-    showToast("Deconnexion effectuee", "info");
   } catch (_) {
-    // best effort
+    // Best effort logout.
   } finally {
-    await refreshStatus();
+    state.files = [];
+    state.selectedFileId = null;
+    state.auth = null;
+    stopAutoRefresh();
+    renderFiles();
+    setView("login");
+  }
+}
+
+async function refreshFiles({ silent = false } = {}) {
+  try {
+    const data = await apiFetch("/list.php");
+    state.files = Array.isArray(data.files) ? data.files : [];
+    state.stats = data.stats || null;
+    if (state.selectedFileId && !state.files.some((file) => file.id === state.selectedFileId)) {
+      state.selectedFileId = null;
+      state.shares = [];
+    }
+    renderMetrics();
+    renderFiles();
+    renderDetail();
+  } catch (error) {
+    if (!silent) {
+      showNotice(`Lecture impossible: ${error.message}`, "error");
+    }
+    if (error.status === 401 || error.status === 403) {
+      await refreshStatus();
+    }
+  }
+}
+
+function renderMetrics() {
+  const stats = state.stats || {};
+  qs("#metric-files").textContent = String(stats.file_count ?? state.files.length);
+  qs("#metric-size").textContent = bytesFmt(stats.total_size || 0);
+  qs("#metric-shares").textContent = String(stats.active_share_count || 0);
+  qs("#metric-downloads").textContent = String(stats.total_downloads || 0);
+}
+
+function filteredFiles() {
+  const search = qs("#search-input").value.trim().toLowerCase();
+  const sort = qs("#sort-select").value;
+  let files = state.files.slice();
+
+  if (search) {
+    files = files.filter((file) => String(file.name || "").toLowerCase().includes(search));
+  }
+
+  files.sort((left, right) => {
+    switch (sort) {
+      case "oldest":
+        return new Date(left.created_at).getTime() - new Date(right.created_at).getTime();
+      case "name_asc":
+        return String(left.name).localeCompare(String(right.name), "fr", { sensitivity: "base" });
+      case "name_desc":
+        return String(right.name).localeCompare(String(left.name), "fr", { sensitivity: "base" });
+      case "size_desc":
+        return (right.size || 0) - (left.size || 0);
+      case "newest":
+      default:
+        return new Date(right.created_at).getTime() - new Date(left.created_at).getTime();
+    }
+  });
+
+  return files;
+}
+
+function renderFiles() {
+  const body = qs("#file-table-body");
+  const empty = qs("#empty-state");
+  if (!body) {
+    return;
+  }
+
+  const files = filteredFiles();
+  body.innerHTML = "";
+  setHidden(empty, files.length !== 0);
+
+  for (const file of files) {
+    const row = document.createElement("tr");
+    row.className = file.id === state.selectedFileId ? "is-selected" : "";
+    row.innerHTML = `
+      <td>
+        <button class="file-name-button" type="button" data-select="${file.id}">
+          <span class="file-ext">${getExtension(file.name)}</span>
+          <span>${escapeHtml(file.name)}</span>
+        </button>
+      </td>
+      <td>${bytesFmt(file.size)}</td>
+      <td>${file.active_share_count || 0}</td>
+      <td>${dateFmt(file.created_at)}</td>
+      <td class="row-actions">
+        <a href="${file.download_url}" target="_blank" rel="noopener noreferrer">Telecharger</a>
+        <button type="button" data-share="${file.id}">Partager</button>
+      </td>
+    `;
+    body.appendChild(row);
+  }
+
+  qsa("[data-select]").forEach((button) => {
+    button.addEventListener("click", () => selectFile(Number(button.dataset.select)));
+  });
+  qsa("[data-share]").forEach((button) => {
+    button.addEventListener("click", () => {
+      selectFile(Number(button.dataset.share));
+      qs("#share-days").focus();
+    });
+  });
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+async function selectFile(id) {
+  state.selectedFileId = id;
+  state.shares = [];
+  renderFiles();
+  renderDetail();
+  await loadShares();
+}
+
+function selectedFile() {
+  return state.files.find((file) => file.id === state.selectedFileId) || null;
+}
+
+function renderDetail() {
+  const file = selectedFile();
+  qs("#detail-title").textContent = file ? file.name : "Aucun fichier";
+  qs("#detail-size").textContent = file ? bytesFmt(file.size) : "-";
+  qs("#detail-type").textContent = file ? file.mime_type || file.extension || "-" : "-";
+  qs("#detail-created").textContent = file ? dateFmt(file.created_at) : "-";
+  qs("#detail-downloads").textContent = file ? String(file.download_count || 0) : "-";
+  setHidden(qs("#detail-actions"), !file);
+  setHidden(qs("#share-manager"), !file);
+  if (file) {
+    qs("#download-link").href = file.download_url;
+  }
+  renderShares();
+}
+
+async function loadShares() {
+  const file = selectedFile();
+  if (!file) {
+    state.shares = [];
+    renderShares();
+    return;
+  }
+
+  try {
+    const data = await apiFetch(`/share.php?id=${encodeURIComponent(file.id)}`);
+    state.shares = Array.isArray(data.shares) ? data.shares : [];
+    renderShares();
+  } catch (error) {
+    showToast(`Lecture des partages impossible: ${error.message}`, "error");
+  }
+}
+
+function renderShares() {
+  const list = qs("#share-list");
+  if (!list) {
+    return;
+  }
+  list.innerHTML = "";
+
+  if (!selectedFile()) {
+    return;
+  }
+
+  if (!state.shares.length) {
+    list.innerHTML = '<li class="muted">Aucun lien public.</li>';
+    return;
+  }
+
+  for (const share of state.shares) {
+    const item = document.createElement("li");
+    item.className = share.is_usable ? "" : "is-disabled";
+    item.innerHTML = `
+      <div>
+        <strong>${share.is_usable ? "Actif" : "Inactif"}</strong>
+        <span>${share.expires_at ? `Expire ${dateFmt(share.expires_at)}` : "Sans expiration"} - ${share.download_count} telechargement(s)</span>
+      </div>
+      <div class="share-actions">
+        <button type="button" data-copy-share="${share.token}">Copier</button>
+        <button class="danger-button" type="button" data-revoke-share="${share.token}">Revoquer</button>
+      </div>
+    `;
+    list.appendChild(item);
+  }
+
+  qsa("[data-copy-share]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const share = state.shares.find((entry) => entry.token === button.dataset.copyShare);
+      if (!share) {
+        return;
+      }
+      await copyText(share.share_url);
+    });
+  });
+  qsa("[data-revoke-share]").forEach((button) => {
+    button.addEventListener("click", () => revokeShare(button.dataset.revokeShare));
+  });
+}
+
+async function copyText(value) {
+  try {
+    await navigator.clipboard.writeText(value);
+    showToast("Lien copie", "success");
+  } catch (_) {
+    showNotice(value, "info");
+  }
+}
+
+async function createShare(event) {
+  event.preventDefault();
+  const file = selectedFile();
+  if (!file) {
+    return;
+  }
+
+  try {
+    const data = await apiFetch("/share.php", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        file_id: file.id,
+        expires_days: qs("#share-days").value.trim(),
+        max_downloads: qs("#share-max").value.trim(),
+      }),
+    });
+    qs("#share-days").value = "";
+    qs("#share-max").value = "";
+    state.shares.unshift(data.share);
+    renderShares();
+    await copyText(data.share.share_url);
+    await refreshFiles({ silent: true });
+  } catch (error) {
+    showToast(`Creation impossible: ${error.message}`, "error");
+  }
+}
+
+async function revokeShare(token) {
+  try {
+    await apiFetch("/share.php", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ action: "revoke", token }),
+    });
+    await loadShares();
+    await refreshFiles({ silent: true });
+    showToast("Lien revoque", "success");
+  } catch (error) {
+    showToast(`Revocation impossible: ${error.message}`, "error");
+  }
+}
+
+async function renameSelectedFile() {
+  const file = selectedFile();
+  if (!file) {
+    return;
+  }
+
+  const name = window.prompt("Nouveau nom", file.name);
+  if (name === null || !name.trim()) {
+    return;
+  }
+
+  try {
+    const data = await apiFetch("/rename.php", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ id: file.id, name: name.trim() }),
+    });
+    state.files = state.files.map((entry) => (entry.id === data.file.id ? data.file : entry));
+    renderFiles();
+    renderDetail();
+    showToast("Fichier renomme", "success");
+  } catch (error) {
+    showToast(`Renommage impossible: ${error.message}`, "error");
+  }
+}
+
+async function deleteSelectedFile() {
+  const file = selectedFile();
+  if (!file || !window.confirm(`Supprimer ${file.name} ?`)) {
+    return;
+  }
+
+  try {
+    await apiFetch("/delete.php", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ id: file.id }),
+    });
+    state.selectedFileId = null;
+    await refreshFiles({ silent: true });
+    showToast("Fichier supprime", "success");
+  } catch (error) {
+    showToast(`Suppression impossible: ${error.message}`, "error");
+  }
+}
+
+function updateSelectedFilesMeta() {
+  const input = qs("#file-input");
+  const files = Array.from(input?.files || []);
+  const total = files.reduce((sum, file) => sum + (file.size || 0), 0);
+  qs("#selected-files").textContent = files.length
+    ? `${files.length} fichier(s) - ${bytesFmt(total)}`
+    : "Aucun fichier selectionne.";
+}
+
+function setUploading(isUploading) {
+  setHidden(qs("#cancel-upload-btn"), !isUploading);
+  qs("#file-input").disabled = isUploading;
+  qs("#dropzone").classList.toggle("is-disabled", isUploading);
+}
+
+async function uploadFiles(event) {
+  event.preventDefault();
+  const input = qs("#file-input");
+  const files = Array.from(input.files || []);
+  if (!files.length || state.uploadXhr) {
+    return;
+  }
+
+  const formData = new FormData();
+  files.forEach((file) => formData.append("files[]", file, file.name));
+
+  const progress = qs("#progress");
+  const progressBar = qs("#progress-bar");
+  const progressText = qs("#progress-text");
+  setHidden(progress, false);
+  progressBar.style.width = "0%";
+  progressText.textContent = "0%";
+  setUploading(true);
+
+  try {
+    const result = await uploadWithProgress(formData, (loaded, total) => {
+      const percent = total ? Math.round((loaded * 100) / total) : 0;
+      progressBar.style.width = `${percent}%`;
+      progressText.textContent = `${percent}%`;
+    });
+    const failures = (result.results || []).filter((entry) => !entry.success);
+    if (failures.length) {
+      showToast(`${failures.length} upload(s) en erreur`, "error");
+    } else {
+      showToast("Upload termine", "success");
+    }
+    input.value = "";
+    updateSelectedFilesMeta();
+    await refreshFiles({ silent: true });
+  } catch (error) {
+    showToast(error.code === "UPLOAD_ABORTED" ? "Upload annule" : `Upload impossible: ${error.message}`, "error");
+  } finally {
+    setUploading(false);
+    setHidden(progress, true);
   }
 }
 
 function uploadWithProgress(formData, onProgress) {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    currentUploadXhr = xhr;
+    state.uploadXhr = xhr;
     xhr.open("POST", `${apiBase}/upload.php`);
     xhr.responseType = "json";
     xhr.withCredentials = true;
 
-    const clearCurrent = () => {
-      if (currentUploadXhr === xhr) {
-        currentUploadXhr = null;
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) {
+        onProgress(event.loaded, event.total);
       }
     };
 
     xhr.onload = () => {
-      clearCurrent();
-      if (xhr.status >= 200 && xhr.status < 300 && xhr.response && xhr.response.success !== false) {
-        resolve(xhr.response);
+      state.uploadXhr = null;
+      if (xhr.status >= 200 && xhr.status < 300 && xhr.response?.success !== false) {
+        resolve(xhr.response || {});
         return;
       }
-      const msg = (xhr.response && (xhr.response.error || JSON.stringify(xhr.response))) || xhr.statusText;
-      reject(new Error(msg || `HTTP ${xhr.status}`));
+      reject(new Error(xhr.response?.error || xhr.statusText || `HTTP ${xhr.status}`));
     };
 
     xhr.onerror = () => {
-      clearCurrent();
-      reject(new Error("Reseau/serveur indisponible"));
+      state.uploadXhr = null;
+      reject(new Error("Reseau indisponible"));
     };
 
     xhr.onabort = () => {
-      clearCurrent();
-      const err = new Error("Upload annule.");
-      err.code = "UPLOAD_ABORTED";
-      reject(err);
+      state.uploadXhr = null;
+      const error = new Error("Upload annule");
+      error.code = "UPLOAD_ABORTED";
+      reject(error);
     };
-
-    if (xhr.upload && onProgress) {
-      xhr.upload.onprogress = (e) => {
-        if (!e.lengthComputable) {
-          return;
-        }
-        onProgress(e.loaded, e.total);
-      };
-    }
 
     xhr.send(formData);
   });
 }
 
-function setUploadingState(uploading) {
-  const fileInput = qs("#files");
-  const sendBtn = qs("#upload-submit-btn");
-  const cancelBtn = qs("#cancel-upload-btn");
-  const dropzone = qs("#dropzone");
-
-  if (fileInput) {
-    fileInput.disabled = uploading;
+function cancelUpload() {
+  if (state.uploadXhr) {
+    state.uploadXhr.abort();
   }
-  if (sendBtn) {
-    sendBtn.disabled = uploading;
-  }
-  if (dropzone) {
-    dropzone.style.pointerEvents = uploading ? "none" : "auto";
-    dropzone.style.opacity = uploading ? "0.65" : "1";
-  }
-  setHidden(cancelBtn, !uploading);
-}
-
-function cancelCurrentUpload() {
-  if (!currentUploadXhr) {
-    return;
-  }
-  currentUploadXhr.abort();
-}
-
-async function startUpload(fileListLike) {
-  if (currentUploadXhr) {
-    return;
-  }
-
-  const files = Array.from(fileListLike || []);
-  if (!files.length) {
-    return;
-  }
-
-  const fd = new FormData();
-  for (const f of files) {
-    fd.append("files[]", f, f.name);
-  }
-
-  const bar = qs("#progress-bar");
-  const wrap = qs("#progress");
-  const text = qs("#progress-text");
-  const uploadErrors = qs("#upload-errors");
-  setHidden(wrap, false);
-  setUploadingState(true);
-  bar.style.width = "0%";
-  text.textContent = "";
-  uploadErrors.textContent = "";
-
-  try {
-    const result = await uploadWithProgress(fd, (loaded, total) => {
-      const pct = total ? Math.round((loaded * 100) / total) : 0;
-      bar.style.width = `${pct}%`;
-      text.textContent = `${pct}%`;
-    });
-
-    setHidden(wrap, true);
-    setUploadingState(false);
-    qs("#files").value = "";
-    setSelectedFilesMeta();
-
-    const failed = (result.results || []).filter((x) => !x.success);
-    if (failed.length) {
-      showToast(`${failed.length} fichier(s) en echec`, "error", 4200);
-      uploadErrors.textContent = failed.map((x) => `${x.name}: ${x.error || "Erreur"}`).join("\n");
-    } else {
-      showToast("Upload termine", "success");
-    }
-    await refreshList({ silent: true });
-  } catch (e) {
-    setHidden(wrap, true);
-    setUploadingState(false);
-    uploadErrors.textContent = e.code === "UPLOAD_ABORTED" ? "Upload annule." : String(e.message || e);
-    if (e.code === "UPLOAD_ABORTED") {
-      showToast("Upload annule", "info");
-    } else {
-      showToast(`Upload en erreur: ${e.message || e}`, "error", 4200);
-    }
-    if (e.status === 401 || e.status === 403) {
-      await refreshStatus();
-    }
-  }
-}
-
-async function doUpload(ev) {
-  ev.preventDefault();
-  const input = qs("#files");
-  await startUpload(input.files);
-}
-
-function getFilteredSortedFiles() {
-  const search = (qs("#search-input")?.value || "").trim().toLowerCase();
-  const sort = qs("#sort-select")?.value || "newest";
-
-  let list = filesCache.slice();
-  if (search) {
-    list = list.filter((f) => String(f.name || "").toLowerCase().includes(search));
-  }
-
-  list.sort((a, b) => {
-    switch (sort) {
-      case "oldest":
-        return (a.mtime || 0) - (b.mtime || 0);
-      case "name_asc":
-        return String(a.name || "").localeCompare(String(b.name || ""));
-      case "name_desc":
-        return String(b.name || "").localeCompare(String(a.name || ""));
-      case "size_desc":
-        return (b.size || 0) - (a.size || 0);
-      case "newest":
-      default:
-        return (b.mtime || 0) - (a.mtime || 0);
-    }
-  });
-
-  return list;
-}
-
-function renderFiles() {
-  const listEl = qs("#file-list");
-  if (!listEl) {
-    return;
-  }
-
-  const filtered = getFilteredSortedFiles();
-  listEl.innerHTML = "";
-  setSelectionMeta();
-
-  if (!filtered.length) {
-    listEl.innerHTML = "<li>Aucun fichier.</li>";
-    return;
-  }
-
-  for (const f of filtered) {
-    const li = document.createElement("li");
-
-    const checkbox = document.createElement("input");
-    checkbox.type = "checkbox";
-    checkbox.className = "file-select";
-    checkbox.checked = selectedIds.has(f.id);
-    checkbox.addEventListener("change", () => {
-      if (checkbox.checked) {
-        selectedIds.add(f.id);
-      } else {
-        selectedIds.delete(f.id);
-      }
-      setSelectionMeta();
-    });
-    li.appendChild(checkbox);
-
-    const meta = document.createElement("div");
-    meta.className = "file-meta";
-
-    const titleRow = document.createElement("div");
-    titleRow.className = "file-title-row";
-    const badge = document.createElement("span");
-    badge.className = "ext-badge";
-    badge.textContent = getExt(f.name);
-
-    const link = document.createElement("a");
-    link.href = f.url;
-    link.textContent = f.name;
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
-
-    titleRow.appendChild(badge);
-    titleRow.appendChild(link);
-
-    const sub = document.createElement("small");
-    const dt = new Date((f.mtime || 0) * 1000).toLocaleString();
-    sub.textContent = `${bytesFmt(f.size || 0)} - ${dt}`;
-
-    meta.appendChild(titleRow);
-    meta.appendChild(sub);
-    li.appendChild(meta);
-
-    const actions = document.createElement("div");
-    actions.className = "file-actions";
-
-    const copyBtn = document.createElement("button");
-    copyBtn.type = "button";
-    copyBtn.textContent = "Copier lien";
-    copyBtn.addEventListener("click", async () => {
-      try {
-        await navigator.clipboard.writeText(f.url);
-        showToast("Lien copie", "success");
-      } catch (_) {
-        showToast("Copie impossible", "error");
-      }
-    });
-
-    const renameBtn = document.createElement("button");
-    renameBtn.type = "button";
-    renameBtn.textContent = "Renommer";
-    renameBtn.addEventListener("click", async () => {
-      const dot = f.name.lastIndexOf(".");
-      const ext = dot > 0 ? f.name.slice(dot) : "";
-      const base = dot > 0 ? f.name.slice(0, dot) : f.name;
-      const input = prompt(`Nouveau nom (sans extension ${ext || ""})`, base);
-      if (input == null) {
-        return;
-      }
-      let newBase = input.trim();
-      if (!newBase) {
-        return;
-      }
-      if (ext && newBase.toLowerCase().endsWith(ext.toLowerCase())) {
-        newBase = newBase.slice(0, -ext.length);
-      }
-      try {
-        await apiFetch("/rename.php", {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: new URLSearchParams({ id: f.id, name: newBase }).toString(),
-        });
-        showToast("Fichier renomme", "success");
-        await refreshList({ silent: true });
-      } catch (e) {
-        showToast(`Renommage echoue: ${e.message}`, "error", 4200);
-        if (e.status === 401 || e.status === 403) {
-          await refreshStatus();
-        }
-      }
-    });
-
-    const deleteBtn = document.createElement("button");
-    deleteBtn.type = "button";
-    deleteBtn.className = "danger-soft";
-    deleteBtn.textContent = "Supprimer";
-    deleteBtn.addEventListener("click", async () => {
-      if (!confirm(`Supprimer ${f.name} ?`)) {
-        return;
-      }
-      try {
-        await apiFetch("/delete.php", {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: new URLSearchParams({ id: f.id }).toString(),
-        });
-        selectedIds.delete(f.id);
-        showToast("Fichier supprime", "success");
-        await refreshList({ silent: true });
-      } catch (e) {
-        showToast(`Suppression echouee: ${e.message}`, "error", 4200);
-        if (e.status === 401 || e.status === 403) {
-          await refreshStatus();
-        }
-      }
-    });
-
-    actions.appendChild(copyBtn);
-    actions.appendChild(renameBtn);
-    actions.appendChild(deleteBtn);
-    li.appendChild(actions);
-    listEl.appendChild(li);
-  }
-}
-
-async function refreshList({ silent = false } = {}) {
-  const errs = qs("#list-errors");
-  if (!silent) {
-    errs.textContent = "";
-  }
-
-  try {
-    const data = await apiFetch("/list.php");
-    filesCache = Array.isArray(data.files) ? data.files : [];
-    selectedIds.forEach((id) => {
-      if (!filesCache.find((x) => x.id === id)) {
-        selectedIds.delete(id);
-      }
-    });
-    renderFiles();
-  } catch (e) {
-    errs.textContent = String(e.message || e);
-    if (e.status === 401 || e.status === 403) {
-      await refreshStatus();
-    }
-  }
-}
-
-function handleDropzoneFiles(files) {
-  const input = qs("#files");
-  if (!files || !files.length || !input) {
-    return;
-  }
-
-  const dataTransfer = new DataTransfer();
-  for (const file of files) {
-    dataTransfer.items.add(file);
-  }
-  input.files = dataTransfer.files;
-  setSelectedFilesMeta();
 }
 
 function initDropzone() {
   const dropzone = qs("#dropzone");
-  const input = qs("#files");
+  const input = qs("#file-input");
   if (!dropzone || !input) {
     return;
   }
 
   dropzone.addEventListener("click", () => input.click());
-  dropzone.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
+  dropzone.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
       input.click();
     }
   });
-
-  const setOver = (over) => {
-    dropzone.classList.toggle("is-dragover", over);
-  };
-
-  dropzone.addEventListener("dragenter", (e) => {
-    e.preventDefault();
-    setOver(true);
+  ["dragenter", "dragover"].forEach((name) => {
+    dropzone.addEventListener(name, (event) => {
+      event.preventDefault();
+      dropzone.classList.add("is-dragover");
+    });
   });
-  dropzone.addEventListener("dragover", (e) => {
-    e.preventDefault();
-    setOver(true);
+  ["dragleave", "drop"].forEach((name) => {
+    dropzone.addEventListener(name, () => dropzone.classList.remove("is-dragover"));
   });
-  dropzone.addEventListener("dragleave", () => setOver(false));
-  dropzone.addEventListener("drop", (e) => {
-    e.preventDefault();
-    setOver(false);
-    handleDropzoneFiles(e.dataTransfer?.files || []);
+  dropzone.addEventListener("drop", (event) => {
+    event.preventDefault();
+    const transfer = new DataTransfer();
+    Array.from(event.dataTransfer?.files || []).forEach((file) => transfer.items.add(file));
+    input.files = transfer.files;
+    updateSelectedFilesMeta();
   });
 }
 
-function bindToolbar() {
-  qs("#search-input")?.addEventListener("input", renderFiles);
-  qs("#sort-select")?.addEventListener("change", renderFiles);
-  qs("#refresh-files-btn")?.addEventListener("click", () => refreshList({ silent: false }));
+async function renderPublicShare(token) {
+  setView("share");
+  try {
+    const data = await apiFetch(`/share.php?token=${encodeURIComponent(token)}`);
+    const share = data.share;
+    qs("#share-title").textContent = share.file.name;
+    qs("#share-size").textContent = bytesFmt(share.file.size);
+    qs("#share-type").textContent = share.file.mime_type || share.file.extension || "-";
+    qs("#share-expiry").textContent = share.expires_at ? dateFmt(share.expires_at) : "Sans expiration";
+    qs("#share-download").href = share.download_url;
+  } catch (error) {
+    qs("#share-title").textContent = "Lien indisponible";
+    qs("#share-size").textContent = "-";
+    qs("#share-type").textContent = "-";
+    qs("#share-expiry").textContent = error.message;
+    qs("#share-download").removeAttribute("href");
+  }
+}
 
-  qs("#select-all-btn")?.addEventListener("click", () => {
-    for (const f of getFilteredSortedFiles()) {
-      selectedIds.add(f.id);
-    }
-    renderFiles();
-  });
-
-  qs("#clear-selection-btn")?.addEventListener("click", () => {
-    selectedIds.clear();
-    renderFiles();
-  });
-
-  qs("#delete-selected-btn")?.addEventListener("click", async () => {
-    if (!selectedIds.size) {
-      showToast("Aucune selection", "info");
-      return;
-    }
-    if (!confirm(`Supprimer ${selectedIds.size} fichier(s) selectionne(s) ?`)) {
-      return;
-    }
-
-    const ids = Array.from(selectedIds);
-    let deleted = 0;
-    for (const id of ids) {
-      try {
-        await apiFetch("/delete.php", {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: new URLSearchParams({ id }).toString(),
-        });
-        deleted += 1;
-        selectedIds.delete(id);
-      } catch (_) {
-        // Continue and report count.
-      }
-    }
-
-    await refreshList({ silent: true });
-    if (deleted > 0) {
-      showToast(`${deleted} fichier(s) supprime(s)`, "success");
-    } else {
-      showToast("Aucune suppression effectuee", "error");
+function bindUi() {
+  qs("#login-form").addEventListener("submit", login);
+  qs("#logout-btn").addEventListener("click", logout);
+  qs("#refresh-btn").addEventListener("click", () => refreshFiles({ silent: false }));
+  qs("#search-input").addEventListener("input", renderFiles);
+  qs("#sort-select").addEventListener("change", renderFiles);
+  qs("#upload-form").addEventListener("submit", uploadFiles);
+  qs("#file-input").addEventListener("change", updateSelectedFilesMeta);
+  qs("#cancel-upload-btn").addEventListener("click", cancelUpload);
+  qs("#rename-btn").addEventListener("click", renameSelectedFile);
+  qs("#delete-btn").addEventListener("click", deleteSelectedFile);
+  qs("#share-form").addEventListener("submit", createShare);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && state.auth?.is_admin) {
+      void refreshFiles({ silent: true });
     }
   });
+  initDropzone();
 }
 
 window.addEventListener("DOMContentLoaded", () => {
-  qs("#login-form")?.addEventListener("submit", doLogin);
-  qs("#logout-btn")?.addEventListener("click", doLogout);
-  qs("#refresh-auth-btn")?.addEventListener("click", refreshStatus);
-  qs("#upload-form")?.addEventListener("submit", doUpload);
-  qs("#cancel-upload-btn")?.addEventListener("click", cancelCurrentUpload);
-  qs("#files")?.addEventListener("change", setSelectedFilesMeta);
+  bindUi();
+  updateSelectedFilesMeta();
 
-  bindToolbar();
-  initDropzone();
-  setSelectedFilesMeta();
-  setSelectionMeta();
-  refreshStatus();
+  const shareToken = new URLSearchParams(window.location.search).get("share");
+  if (shareToken) {
+    void renderPublicShare(shareToken);
+    return;
+  }
+
+  void refreshStatus();
 });
-

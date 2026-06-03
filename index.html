@@ -7,90 +7,204 @@
     <link rel="stylesheet" href="/style.css" />
   </head>
   <body>
-    <div class="bg-glow bg-glow-a"></div>
-    <div class="bg-glow bg-glow-b"></div>
-
-    <header class="topbar">
-      <div>
-        <h1>ShinedeBox</h1>
-        <p class="subtitle">Gestion admin des uploads</p>
-      </div>
-
-      <div id="auth" class="auth-box">
-        <div id="auth-status">Verification...</div>
-        <div id="auth-actions" class="actions">
-          <form id="login-form" class="hidden auth-form">
-            <input id="login-username" name="username" type="text" autocomplete="username" placeholder="Username" />
-            <input id="login-password" name="password" type="password" autocomplete="current-password" placeholder="Password" />
-            <button type="submit">Se connecter</button>
-          </form>
-          <button id="refresh-auth-btn" class="hidden" type="button">Rafraichir</button>
-          <button id="logout-btn" class="hidden danger-soft" type="button">Se deconnecter</button>
+    <main class="app-frame">
+      <header class="app-header">
+        <div class="brand-lockup">
+          <div class="brand-mark">SB</div>
+          <div>
+            <p class="eyebrow">File vault</p>
+            <h1>ShinedeBox</h1>
+          </div>
         </div>
-      </div>
-    </header>
 
-    <main class="layout">
-      <section id="access-note" class="card hidden">
-        <h2>Acces restreint</h2>
-        <p>Seuls les administrateurs Shinederu peuvent gerer les fichiers.</p>
+        <div id="session-actions" class="header-actions hidden">
+          <div class="session-card">
+            <strong id="session-name">Session</strong>
+            <span id="session-role">Box</span>
+          </div>
+          <button id="refresh-btn" class="text-button" type="button">Actualiser</button>
+          <button id="logout-btn" class="danger-button" type="button">Quitter</button>
+        </div>
+      </header>
+
+      <section id="notice" class="notice hidden"></section>
+
+      <section id="share-view" class="surface share-view hidden">
+        <p class="eyebrow">Partage public</p>
+        <h2 id="share-title">Lien ShinedeBox</h2>
+        <dl class="share-facts">
+          <div>
+            <dt>Taille</dt>
+            <dd id="share-size">-</dd>
+          </div>
+          <div>
+            <dt>Type</dt>
+            <dd id="share-type">-</dd>
+          </div>
+          <div>
+            <dt>Expiration</dt>
+            <dd id="share-expiry">-</dd>
+          </div>
+        </dl>
+        <a id="share-download" class="primary-link" href="#">Telecharger</a>
       </section>
 
-      <section id="uploader" class="card hidden">
-        <h2>Uploader des fichiers</h2>
-
-        <div id="dropzone" class="dropzone" role="button" tabindex="0" aria-label="Zone de depot">
-          <p class="drop-main">Glisse-depose tes fichiers ici</p>
-          <p class="drop-sub">ou clique pour en selectionner</p>
-        </div>
-
-        <form id="upload-form" class="upload-form">
-          <input type="file" id="files" name="files[]" multiple />
-          <button id="upload-submit-btn" type="submit">Envoyer</button>
-          <button id="cancel-upload-btn" class="hidden danger-soft" type="button">Annuler l'upload</button>
+      <section id="login-view" class="surface auth-view hidden">
+        <p class="eyebrow">Connexion</p>
+        <h2>Compte Shinederu</h2>
+        <form id="login-form" class="login-form">
+          <label>
+            <span>Identifiant</span>
+            <input id="login-username" name="username" type="text" autocomplete="username" />
+          </label>
+          <label>
+            <span>Mot de passe</span>
+            <input id="login-password" name="password" type="password" autocomplete="current-password" />
+          </label>
+          <button class="primary-button" type="submit">Se connecter</button>
         </form>
-
-        <div id="selected-files-meta" class="hint">Aucun fichier selectionne.</div>
-
-        <div id="progress" class="progress hidden">
-          <div id="progress-bar" class="progress-bar"></div>
-          <span id="progress-text"></span>
-        </div>
-        <div id="upload-errors" class="errors"></div>
       </section>
 
-      <section class="card">
-        <div class="files-header">
-          <h2>Fichiers</h2>
-          <div id="files-actions" class="hint hidden">Actions rapides: copier, renommer, supprimer.</div>
-        </div>
+      <section id="access-view" class="surface auth-view hidden">
+        <p class="eyebrow">Acces</p>
+        <h2>Compte non autorise</h2>
+        <p class="muted">Le role Box n'est pas attache a ce compte.</p>
+      </section>
 
-        <div class="toolbar">
-          <input id="search-input" type="search" placeholder="Rechercher un fichier..." />
-          <select id="sort-select">
-            <option value="newest">Plus recents</option>
-            <option value="oldest">Plus anciens</option>
-            <option value="name_asc">Nom A-Z</option>
-            <option value="name_desc">Nom Z-A</option>
-            <option value="size_desc">Taille decroissante</option>
-          </select>
-          <button id="refresh-files-btn" type="button">Rafraichir</button>
-          <button id="select-all-btn" type="button">Tout selectionner</button>
-          <button id="clear-selection-btn" type="button">Effacer selection</button>
-          <button id="delete-selected-btn" class="danger-soft" type="button">Supprimer selection</button>
-        </div>
+      <section id="box-view" class="box-view hidden">
+        <section class="metrics-row">
+          <article class="metric">
+            <span>Fichiers</span>
+            <strong id="metric-files">0</strong>
+          </article>
+          <article class="metric">
+            <span>Stockage</span>
+            <strong id="metric-size">0 B</strong>
+          </article>
+          <article class="metric">
+            <span>Partages actifs</span>
+            <strong id="metric-shares">0</strong>
+          </article>
+          <article class="metric">
+            <span>Telechargements</span>
+            <strong id="metric-downloads">0</strong>
+          </article>
+        </section>
 
-        <div id="selection-meta" class="hint">0 selection</div>
-        <ul id="file-list" class="files"></ul>
-        <div id="list-errors" class="errors"></div>
+        <section class="workspace">
+          <section class="surface upload-surface">
+            <div class="section-head">
+              <div>
+                <p class="eyebrow">Upload</p>
+                <h2>Depot</h2>
+              </div>
+            </div>
+            <div id="dropzone" class="dropzone" role="button" tabindex="0">
+              <strong>Deposer des fichiers</strong>
+              <span>ou parcourir</span>
+            </div>
+            <form id="upload-form" class="upload-form">
+              <input id="file-input" name="files[]" type="file" multiple />
+              <div class="form-actions">
+                <button class="primary-button" type="submit">Envoyer</button>
+                <button id="cancel-upload-btn" class="danger-button hidden" type="button">Annuler</button>
+              </div>
+            </form>
+            <div id="selected-files" class="muted">Aucun fichier selectionne.</div>
+            <div id="progress" class="progress hidden">
+              <div id="progress-bar"></div>
+              <span id="progress-text"></span>
+            </div>
+          </section>
+
+          <section class="surface files-surface">
+            <div class="section-head">
+              <div>
+                <p class="eyebrow">Bibliotheque</p>
+                <h2>Fichiers</h2>
+              </div>
+              <div class="table-actions">
+                <input id="search-input" type="search" placeholder="Recherche" />
+                <select id="sort-select">
+                  <option value="newest">Plus recents</option>
+                  <option value="oldest">Plus anciens</option>
+                  <option value="name_asc">Nom A-Z</option>
+                  <option value="name_desc">Nom Z-A</option>
+                  <option value="size_desc">Taille</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Nom</th>
+                    <th>Taille</th>
+                    <th>Partages</th>
+                    <th>Ajoute</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="file-table-body"></tbody>
+              </table>
+            </div>
+            <div id="empty-state" class="empty-state hidden">Aucun fichier.</div>
+          </section>
+
+          <aside id="detail-panel" class="surface detail-panel">
+            <p class="eyebrow">Detail</p>
+            <h2 id="detail-title">Aucun fichier</h2>
+            <dl class="detail-list">
+              <div>
+                <dt>Taille</dt>
+                <dd id="detail-size">-</dd>
+              </div>
+              <div>
+                <dt>Type</dt>
+                <dd id="detail-type">-</dd>
+              </div>
+              <div>
+                <dt>Ajoute</dt>
+                <dd id="detail-created">-</dd>
+              </div>
+              <div>
+                <dt>Telechargements</dt>
+                <dd id="detail-downloads">-</dd>
+              </div>
+            </dl>
+            <div id="detail-actions" class="detail-actions hidden">
+              <a id="download-link" class="primary-link" href="#">Telecharger</a>
+              <button id="rename-btn" class="text-button" type="button">Renommer</button>
+              <button id="delete-btn" class="danger-button" type="button">Supprimer</button>
+            </div>
+
+            <div id="share-manager" class="share-manager hidden">
+              <div class="section-head compact-head">
+                <div>
+                  <p class="eyebrow">Partage</p>
+                  <h3>Liens publics</h3>
+                </div>
+              </div>
+              <form id="share-form" class="share-form">
+                <label>
+                  <span>Expiration jours</span>
+                  <input id="share-days" type="number" min="1" max="3650" placeholder="Illimite" />
+                </label>
+                <label>
+                  <span>Max telechargements</span>
+                  <input id="share-max" type="number" min="1" max="1000000" placeholder="Illimite" />
+                </label>
+                <button class="text-button" type="submit">Creer lien</button>
+              </form>
+              <ul id="share-list" class="share-list"></ul>
+            </div>
+          </aside>
+        </section>
       </section>
     </main>
 
-    <footer>
-      <small>© ShinedeBox</small>
-    </footer>
-
-    <div id="toast-container" class="toast-container" aria-live="polite" aria-atomic="true"></div>
+    <div id="toast-container" class="toast-container" aria-live="polite"></div>
 
     <script>
       window.__SHINEDEBOX_API_BASE__ = "https://api.shinederu.ch/box";
@@ -99,4 +213,3 @@
     <script src="/script.js"></script>
   </body>
 </html>
-
