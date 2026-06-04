@@ -129,6 +129,7 @@ h3 {
 
 .session-chip {
   display: grid;
+  height: 46px;
   min-width: 138px;
   min-height: 46px;
   align-content: center;
@@ -142,6 +143,11 @@ h3 {
 .session-chip span {
   color: var(--muted);
   font-size: 0.82rem;
+}
+
+.session-actions > button {
+  height: 46px;
+  min-height: 46px;
 }
 
 .surface,
@@ -326,8 +332,8 @@ dd {
 }
 
 .library-panel,
-.upload-panel,
-.detail-panel {
+.detail-panel,
+.upload-modal-card {
   padding: 18px;
 }
 
@@ -540,6 +546,36 @@ dd {
   font-weight: 900;
 }
 
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(5, 9, 15, 0.76);
+  backdrop-filter: blur(12px);
+}
+
+.upload-modal-card {
+  width: min(640px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+.modal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.upload-modal-card .dropzone {
+  min-height: 166px;
+}
+
 .detail-list {
   display: grid;
   gap: 10px;
@@ -664,7 +700,6 @@ dd {
 
   .side-column {
     order: 2;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     align-items: start;
   }
 }
@@ -704,14 +739,22 @@ dd {
     min-width: 0;
   }
 
+  .session-actions > button {
+    width: 100%;
+  }
+
+  #open-upload-btn {
+    grid-column: 1 / -1;
+  }
+
   .metrics-grid {
     gap: 8px;
   }
 
   .metric-card,
   .library-panel,
-  .upload-panel,
   .detail-panel,
+  .upload-modal-card,
   .auth-card,
   .public-card {
     padding: 14px;
@@ -800,6 +843,14 @@ dd {
 
   .dropzone {
     min-height: 112px;
+  }
+
+  .modal-backdrop {
+    padding: 10px;
+  }
+
+  .upload-modal-card {
+    max-height: calc(100vh - 20px);
   }
 
   .toast-container {

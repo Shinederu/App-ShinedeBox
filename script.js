@@ -137,6 +137,28 @@ function setView(name) {
   setHidden(qs("#access-view"), name !== "access");
   setHidden(qs("#box-view"), name !== "box");
   setHidden(qs("#session-actions"), name !== "box" && name !== "access");
+  setHidden(qs("#open-upload-btn"), name !== "box");
+  if (name !== "box") {
+    closeUploadModal({ force: true });
+  }
+}
+
+function isUploadModalOpen() {
+  const modal = qs("#upload-modal");
+  return Boolean(modal && !modal.classList.contains("hidden"));
+}
+
+function openUploadModal() {
+  setHidden(qs("#upload-modal"), false);
+  window.setTimeout(() => qs("#dropzone")?.focus(), 0);
+}
+
+function closeUploadModal({ force = false } = {}) {
+  if (state.uploadXhr && !force) {
+    showToast("Annule l'upload avant de fermer.", "error");
+    return;
+  }
+  setHidden(qs("#upload-modal"), true);
 }
 
 function startAutoRefresh() {
@@ -607,6 +629,9 @@ async function uploadFiles(event) {
     input.value = "";
     updateSelectedFilesMeta();
     await refreshFiles({ silent: true });
+    if (!failures.length) {
+      closeUploadModal();
+    }
   } catch (error) {
     showToast(error.code === "UPLOAD_ABORTED" ? "Upload annule" : `Upload impossible: ${error.message}`, "error");
   } finally {
@@ -726,6 +751,13 @@ function getShareTokenFromLocation() {
 
 function bindUi() {
   qs("#login-form").addEventListener("submit", login);
+  qs("#open-upload-btn").addEventListener("click", openUploadModal);
+  qs("#close-upload-btn").addEventListener("click", () => closeUploadModal());
+  qs("#upload-modal").addEventListener("click", (event) => {
+    if (event.target === event.currentTarget) {
+      closeUploadModal();
+    }
+  });
   qs("#logout-btn").addEventListener("click", logout);
   qs("#refresh-btn").addEventListener("click", () => refreshFiles({ silent: false }));
   qs("#search-input").addEventListener("input", renderFiles);
@@ -739,6 +771,11 @@ function bindUi() {
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible" && state.auth?.is_admin) {
       void refreshFiles({ silent: true });
+    }
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && isUploadModalOpen()) {
+      closeUploadModal();
     }
   });
   initDropzone();

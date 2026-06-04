@@ -22,6 +22,7 @@
             <strong id="session-name">Session</strong>
             <span id="session-role">Box</span>
           </div>
+          <button id="open-upload-btn" class="primary-button" type="button">Importer un fichier</button>
           <button id="refresh-btn" class="ghost-button" type="button">Actualiser</button>
           <button id="logout-btn" class="danger-button" type="button">Quitter</button>
         </div>
@@ -121,31 +122,6 @@
           </section>
 
           <aside class="side-column">
-            <section class="surface upload-panel">
-              <div class="panel-head">
-                <div>
-                  <p class="eyebrow">Import</p>
-                  <h2>Ajouter</h2>
-                </div>
-              </div>
-              <div id="dropzone" class="dropzone" role="button" tabindex="0">
-                <strong>Deposer des fichiers</strong>
-                <span>ou parcourir</span>
-              </div>
-              <form id="upload-form" class="upload-form">
-                <input id="file-input" name="files[]" type="file" multiple />
-                <div class="form-actions">
-                  <button class="primary-button" type="submit">Envoyer</button>
-                  <button id="cancel-upload-btn" class="danger-button hidden" type="button">Annuler</button>
-                </div>
-              </form>
-              <div id="selected-files" class="muted selected-files">Aucun fichier selectionne.</div>
-              <div id="progress" class="progress hidden">
-                <div id="progress-bar"></div>
-                <span id="progress-text"></span>
-              </div>
-            </section>
-
             <section id="detail-panel" class="surface detail-panel is-empty">
               <div class="panel-head">
                 <div>
@@ -197,6 +173,40 @@
               </div>
             </section>
           </aside>
+        </section>
+      </section>
+
+      <section
+        id="upload-modal"
+        class="modal-backdrop hidden"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="upload-modal-title"
+      >
+        <section class="surface upload-modal-card">
+          <div class="modal-head">
+            <div>
+              <p class="eyebrow">Import</p>
+              <h2 id="upload-modal-title">Importer un fichier</h2>
+            </div>
+            <button id="close-upload-btn" class="ghost-button" type="button">Fermer</button>
+          </div>
+          <div id="dropzone" class="dropzone" role="button" tabindex="0">
+            <strong>Deposer des fichiers</strong>
+            <span>ou parcourir</span>
+          </div>
+          <form id="upload-form" class="upload-form">
+            <input id="file-input" name="files[]" type="file" multiple />
+            <div class="form-actions">
+              <button class="primary-button" type="submit">Envoyer</button>
+              <button id="cancel-upload-btn" class="danger-button hidden" type="button">Annuler</button>
+            </div>
+          </form>
+          <div id="selected-files" class="muted selected-files">Aucun fichier selectionne.</div>
+          <div id="progress" class="progress hidden">
+            <div id="progress-bar"></div>
+            <span id="progress-text"></span>
+          </div>
         </section>
       </section>
     </main>
