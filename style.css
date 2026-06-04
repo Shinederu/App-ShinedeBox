@@ -368,12 +368,19 @@ dd {
   background: rgba(255, 255, 255, 0.028);
   border: 1px solid var(--line);
   border-radius: 8px;
+  cursor: pointer;
 }
 
 .file-item:hover,
 .file-item.is-selected {
   background: rgba(255, 189, 66, 0.075);
   border-color: rgba(255, 189, 66, 0.46);
+}
+
+.file-item:focus-visible {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(255, 189, 66, 0.16);
+  outline: none;
 }
 
 .file-main {
@@ -388,6 +395,7 @@ dd {
   white-space: normal;
   background: transparent;
   border: 0;
+  pointer-events: none;
 }
 
 .file-ext {

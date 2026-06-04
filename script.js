@@ -306,14 +306,16 @@ function renderFiles() {
   for (const file of files) {
     const row = document.createElement("article");
     row.className = `file-item${file.id === state.selectedFileId ? " is-selected" : ""}`;
+    row.dataset.select = String(file.id);
+    row.tabIndex = 0;
     row.innerHTML = `
-      <button class="file-main" type="button" data-select="${file.id}">
+      <div class="file-main">
         <span class="file-ext">${getExtension(file.name)}</span>
         <span class="file-copy">
           <strong>${escapeHtml(file.name)}</strong>
           <span>${file.mime_type || file.extension || "Fichier"}</span>
         </span>
-      </button>
+      </div>
       <div class="file-stat">
         <span>Taille</span>
         <strong>${bytesFmt(file.size)}</strong>
@@ -328,19 +330,24 @@ function renderFiles() {
       </div>
       <div class="file-actions">
         <a href="${file.download_url}" target="_blank" rel="noopener noreferrer">Telecharger</a>
-        <button type="button" data-share="${file.id}">Partager</button>
       </div>
     `;
     body.appendChild(row);
   }
 
-  qsa("[data-select]").forEach((button) => {
-    button.addEventListener("click", () => selectFile(Number(button.dataset.select)));
-  });
-  qsa("[data-share]").forEach((button) => {
-    button.addEventListener("click", () => {
-      selectFile(Number(button.dataset.share));
-      qs("#share-days").focus();
+  qsa(".file-item[data-select]").forEach((item) => {
+    item.addEventListener("click", (event) => {
+      if (event.target.closest(".file-actions")) {
+        return;
+      }
+      selectFile(Number(item.dataset.select));
+    });
+    item.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") {
+        return;
+      }
+      event.preventDefault();
+      selectFile(Number(item.dataset.select));
     });
   });
 }
