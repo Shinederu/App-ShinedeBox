@@ -7,123 +7,104 @@
     <link rel="stylesheet" href="/style.css" />
   </head>
   <body>
-    <main class="app-frame">
-      <header class="app-header">
+    <main class="app-shell">
+      <header class="topbar">
         <div class="brand-lockup">
           <div class="brand-mark">SB</div>
           <div>
-            <p class="eyebrow">File vault</p>
-            <h1>ShinedeBox</h1>
+            <p class="eyebrow">ShinedeBox</p>
+            <h1>Fichiers</h1>
           </div>
         </div>
 
-        <div id="session-actions" class="header-actions hidden">
-          <div class="session-card">
+        <div id="session-actions" class="session-actions hidden">
+          <div class="session-chip">
             <strong id="session-name">Session</strong>
             <span id="session-role">Box</span>
           </div>
-          <button id="refresh-btn" class="text-button" type="button">Actualiser</button>
+          <button id="refresh-btn" class="ghost-button" type="button">Actualiser</button>
           <button id="logout-btn" class="danger-button" type="button">Quitter</button>
         </div>
       </header>
 
       <section id="notice" class="notice hidden"></section>
 
-      <section id="share-view" class="surface share-view hidden">
-        <p class="eyebrow">Partage public</p>
-        <h2 id="share-title">Lien ShinedeBox</h2>
-        <dl class="share-facts">
-          <div>
-            <dt>Taille</dt>
-            <dd id="share-size">-</dd>
-          </div>
-          <div>
-            <dt>Type</dt>
-            <dd id="share-type">-</dd>
-          </div>
-          <div>
-            <dt>Expiration</dt>
-            <dd id="share-expiry">-</dd>
-          </div>
-        </dl>
-        <a id="share-download" class="primary-link" href="#">Telecharger</a>
+      <section id="share-view" class="public-layout hidden">
+        <section class="surface public-card">
+          <p class="eyebrow">Partage public</p>
+          <h2 id="share-title">Lien ShinedeBox</h2>
+          <dl class="public-facts">
+            <div>
+              <dt>Taille</dt>
+              <dd id="share-size">-</dd>
+            </div>
+            <div>
+              <dt>Type</dt>
+              <dd id="share-type">-</dd>
+            </div>
+            <div>
+              <dt>Expiration</dt>
+              <dd id="share-expiry">-</dd>
+            </div>
+          </dl>
+          <a id="share-download" class="primary-link" href="#">Telecharger</a>
+        </section>
       </section>
 
-      <section id="login-view" class="surface auth-view hidden">
-        <p class="eyebrow">Connexion</p>
-        <h2>Compte Shinederu</h2>
-        <form id="login-form" class="login-form">
-          <label>
-            <span>Identifiant</span>
-            <input id="login-username" name="username" type="text" autocomplete="username" />
-          </label>
-          <label>
-            <span>Mot de passe</span>
-            <input id="login-password" name="password" type="password" autocomplete="current-password" />
-          </label>
-          <button class="primary-button" type="submit">Se connecter</button>
-        </form>
+      <section id="login-view" class="auth-layout hidden">
+        <section class="surface auth-card">
+          <p class="eyebrow">Connexion</p>
+          <h2>Compte Shinederu</h2>
+          <form id="login-form" class="login-form">
+            <label>
+              <span>Identifiant</span>
+              <input id="login-username" name="username" type="text" autocomplete="username" />
+            </label>
+            <label>
+              <span>Mot de passe</span>
+              <input id="login-password" name="password" type="password" autocomplete="current-password" />
+            </label>
+            <button class="primary-button" type="submit">Se connecter</button>
+          </form>
+        </section>
       </section>
 
-      <section id="access-view" class="surface auth-view hidden">
-        <p class="eyebrow">Acces</p>
-        <h2>Compte non autorise</h2>
-        <p class="muted">Le role Box n'est pas attache a ce compte.</p>
+      <section id="access-view" class="auth-layout hidden">
+        <section class="surface auth-card">
+          <p class="eyebrow">Acces</p>
+          <h2>Compte non autorise</h2>
+          <p class="muted">Le role Box n'est pas attache a ce compte.</p>
+        </section>
       </section>
 
       <section id="box-view" class="box-view hidden">
-        <section class="metrics-row">
-          <article class="metric">
+        <section class="metrics-grid" aria-label="Statistiques">
+          <article class="metric-card">
             <span>Fichiers</span>
             <strong id="metric-files">0</strong>
           </article>
-          <article class="metric">
+          <article class="metric-card">
             <span>Stockage</span>
             <strong id="metric-size">0 B</strong>
           </article>
-          <article class="metric">
+          <article class="metric-card">
             <span>Partages actifs</span>
             <strong id="metric-shares">0</strong>
           </article>
-          <article class="metric">
+          <article class="metric-card">
             <span>Telechargements</span>
             <strong id="metric-downloads">0</strong>
           </article>
         </section>
 
-        <section class="workspace">
-          <section class="surface upload-surface">
-            <div class="section-head">
-              <div>
-                <p class="eyebrow">Upload</p>
-                <h2>Depot</h2>
-              </div>
-            </div>
-            <div id="dropzone" class="dropzone" role="button" tabindex="0">
-              <strong>Deposer des fichiers</strong>
-              <span>ou parcourir</span>
-            </div>
-            <form id="upload-form" class="upload-form">
-              <input id="file-input" name="files[]" type="file" multiple />
-              <div class="form-actions">
-                <button class="primary-button" type="submit">Envoyer</button>
-                <button id="cancel-upload-btn" class="danger-button hidden" type="button">Annuler</button>
-              </div>
-            </form>
-            <div id="selected-files" class="muted">Aucun fichier selectionne.</div>
-            <div id="progress" class="progress hidden">
-              <div id="progress-bar"></div>
-              <span id="progress-text"></span>
-            </div>
-          </section>
-
-          <section class="surface files-surface">
-            <div class="section-head">
+        <section class="workbench">
+          <section class="surface library-panel">
+            <div class="panel-head library-head">
               <div>
                 <p class="eyebrow">Bibliotheque</p>
-                <h2>Fichiers</h2>
+                <h2>Tous les fichiers</h2>
               </div>
-              <div class="table-actions">
+              <div class="filter-bar">
                 <input id="search-input" type="search" placeholder="Recherche" />
                 <select id="sort-select">
                   <option value="newest">Plus recents</option>
@@ -135,70 +116,86 @@
               </div>
             </div>
 
-            <div class="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Nom</th>
-                    <th>Taille</th>
-                    <th>Partages</th>
-                    <th>Ajoute</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody id="file-table-body"></tbody>
-              </table>
-            </div>
+            <div id="file-list" class="file-list"></div>
             <div id="empty-state" class="empty-state hidden">Aucun fichier.</div>
           </section>
 
-          <aside id="detail-panel" class="surface detail-panel">
-            <p class="eyebrow">Detail</p>
-            <h2 id="detail-title">Aucun fichier</h2>
-            <dl class="detail-list">
-              <div>
-                <dt>Taille</dt>
-                <dd id="detail-size">-</dd>
-              </div>
-              <div>
-                <dt>Type</dt>
-                <dd id="detail-type">-</dd>
-              </div>
-              <div>
-                <dt>Ajoute</dt>
-                <dd id="detail-created">-</dd>
-              </div>
-              <div>
-                <dt>Telechargements</dt>
-                <dd id="detail-downloads">-</dd>
-              </div>
-            </dl>
-            <div id="detail-actions" class="detail-actions hidden">
-              <a id="download-link" class="primary-link" href="#">Telecharger</a>
-              <button id="rename-btn" class="text-button" type="button">Renommer</button>
-              <button id="delete-btn" class="danger-button" type="button">Supprimer</button>
-            </div>
-
-            <div id="share-manager" class="share-manager hidden">
-              <div class="section-head compact-head">
+          <aside class="side-column">
+            <section class="surface upload-panel">
+              <div class="panel-head">
                 <div>
-                  <p class="eyebrow">Partage</p>
-                  <h3>Liens publics</h3>
+                  <p class="eyebrow">Import</p>
+                  <h2>Ajouter</h2>
                 </div>
               </div>
-              <form id="share-form" class="share-form">
-                <label>
-                  <span>Expiration jours</span>
-                  <input id="share-days" type="number" min="1" max="3650" placeholder="Illimite" />
-                </label>
-                <label>
-                  <span>Max telechargements</span>
-                  <input id="share-max" type="number" min="1" max="1000000" placeholder="Illimite" />
-                </label>
-                <button class="text-button" type="submit">Creer lien</button>
+              <div id="dropzone" class="dropzone" role="button" tabindex="0">
+                <strong>Deposer des fichiers</strong>
+                <span>ou parcourir</span>
+              </div>
+              <form id="upload-form" class="upload-form">
+                <input id="file-input" name="files[]" type="file" multiple />
+                <div class="form-actions">
+                  <button class="primary-button" type="submit">Envoyer</button>
+                  <button id="cancel-upload-btn" class="danger-button hidden" type="button">Annuler</button>
+                </div>
               </form>
-              <ul id="share-list" class="share-list"></ul>
-            </div>
+              <div id="selected-files" class="muted selected-files">Aucun fichier selectionne.</div>
+              <div id="progress" class="progress hidden">
+                <div id="progress-bar"></div>
+                <span id="progress-text"></span>
+              </div>
+            </section>
+
+            <section id="detail-panel" class="surface detail-panel is-empty">
+              <div class="panel-head">
+                <div>
+                  <p class="eyebrow">Selection</p>
+                  <h2 id="detail-title">Aucun fichier</h2>
+                </div>
+              </div>
+              <dl class="detail-list">
+                <div>
+                  <dt>Taille</dt>
+                  <dd id="detail-size">-</dd>
+                </div>
+                <div>
+                  <dt>Type</dt>
+                  <dd id="detail-type">-</dd>
+                </div>
+                <div>
+                  <dt>Ajoute</dt>
+                  <dd id="detail-created">-</dd>
+                </div>
+                <div>
+                  <dt>Telechargements</dt>
+                  <dd id="detail-downloads">-</dd>
+                </div>
+              </dl>
+              <div id="detail-actions" class="detail-actions hidden">
+                <a id="download-link" class="primary-link" href="#">Telecharger</a>
+                <button id="rename-btn" class="ghost-button" type="button">Renommer</button>
+                <button id="delete-btn" class="danger-button" type="button">Supprimer</button>
+              </div>
+
+              <div id="share-manager" class="share-manager hidden">
+                <div class="share-heading">
+                  <p class="eyebrow">Partage public</p>
+                  <h3>Liens</h3>
+                </div>
+                <form id="share-form" class="share-form">
+                  <label>
+                    <span>Expiration jours</span>
+                    <input id="share-days" type="number" min="1" max="3650" placeholder="Illimite" />
+                  </label>
+                  <label>
+                    <span>Max telechargements</span>
+                    <input id="share-max" type="number" min="1" max="1000000" placeholder="Illimite" />
+                  </label>
+                  <button class="ghost-button" type="submit">Creer lien</button>
+                </form>
+                <ul id="share-list" class="share-list"></ul>
+              </div>
+            </section>
           </aside>
         </section>
       </section>

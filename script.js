@@ -293,7 +293,7 @@ function filteredFiles() {
 }
 
 function renderFiles() {
-  const body = qs("#file-table-body");
+  const body = qs("#file-list");
   const empty = qs("#empty-state");
   if (!body) {
     return;
@@ -304,22 +304,32 @@ function renderFiles() {
   setHidden(empty, files.length !== 0);
 
   for (const file of files) {
-    const row = document.createElement("tr");
-    row.className = file.id === state.selectedFileId ? "is-selected" : "";
+    const row = document.createElement("article");
+    row.className = `file-item${file.id === state.selectedFileId ? " is-selected" : ""}`;
     row.innerHTML = `
-      <td data-label="Nom">
-        <button class="file-name-button" type="button" data-select="${file.id}">
-          <span class="file-ext">${getExtension(file.name)}</span>
-          <span class="file-title">${escapeHtml(file.name)}</span>
-        </button>
-      </td>
-      <td data-label="Taille">${bytesFmt(file.size)}</td>
-      <td data-label="Partages">${file.active_share_count || 0}</td>
-      <td data-label="Ajoute">${dateFmt(file.created_at)}</td>
-      <td class="row-actions" data-label="Actions">
+      <button class="file-main" type="button" data-select="${file.id}">
+        <span class="file-ext">${getExtension(file.name)}</span>
+        <span class="file-copy">
+          <strong>${escapeHtml(file.name)}</strong>
+          <span>${file.mime_type || file.extension || "Fichier"}</span>
+        </span>
+      </button>
+      <div class="file-stat">
+        <span>Taille</span>
+        <strong>${bytesFmt(file.size)}</strong>
+      </div>
+      <div class="file-stat">
+        <span>Partages</span>
+        <strong>${file.active_share_count || 0}</strong>
+      </div>
+      <div class="file-stat file-date">
+        <span>Ajoute</span>
+        <strong>${dateFmt(file.created_at)}</strong>
+      </div>
+      <div class="file-actions">
         <a href="${file.download_url}" target="_blank" rel="noopener noreferrer">Telecharger</a>
         <button type="button" data-share="${file.id}">Partager</button>
-      </td>
+      </div>
     `;
     body.appendChild(row);
   }
