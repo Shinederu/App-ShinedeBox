@@ -1,64 +1,153 @@
 # ShinedeBox Frontend
 
-Interface statique de ShinedeBox, connectee au backend source `App-ShinedeBox-API`, deploye sous `PROD/API/box`.
+## Role
 
-ShinedeBox sert de service d'hebergement et de partage de fichiers: depot, bibliotheque commune, details fichier, liens publics et telechargements controles par l'API.
+Interface statique de ShinedeBox, service d'hebergement et de partage de
+fichiers. Le premier ecran utile est la bibliotheque commune des fichiers, avec
+connexion Shinederu, import, recherche, details fichier et gestion des liens
+publics.
 
-L'interface est une application statique sombre et responsive. Le premier ecran utile est la bibliotheque de fichiers, avec les actions de session dans le header, la liste au centre et le panneau de selection/partage a droite.
+Le frontend ne manipule pas directement la base de donnees ni le stockage disque.
+Toutes les commandes metier passent par `App-ShinedeBox-API`.
+
+## Repo et deploiement
+
+- Repo source: `P:\DEV\GitHub\App-ShinedeBox`
+- Repo GitHub: `https://github.com/Shinederu/App-ShinedeBox.git`
+- Runtime frontend: `P:\PROD\ShinedeBox`
+- Site public: `https://box.shinederu.ch`
+- Backend proprietaire: `P:\DEV\GitHub\App-ShinedeBox-API`
+- Runtime API: `P:\PROD\API\box`
+- Code projet stable: `box`
+
+`P:\PROD\ShinedeBox` doit contenir uniquement les fichiers servis au navigateur.
+Ne pas y deployer `.git`, documentation, config Nginx de reference, caches,
+tests, brouillons, secrets ou anciens dossiers d'upload.
 
 ## Structure
 
-- `index.html` : shell HTML et configuration des bases API.
-- `script.js` : logique auth, upload, liste, details et partages.
-- `style.css` : interface sombre responsive.
-- `Nginx/box.shinederu.ch.conf` : exemple de vhost frontend.
+- `index.html`: shell HTML et configuration des bases API.
+- `script.js`: logique auth, upload, liste, details, partage et vue publique.
+- `style.css`: interface sombre responsive.
+- `Nginx/box.shinederu.ch.conf`: exemple de vhost, conserve dans le repo comme
+  reference infra et non deploye dans le runtime frontend.
+- `AGENTS.md`: consignes de reprise locales.
 
-## API cible
+## Endpoints
 
-Par defaut, le front appelle:
+Le frontend appelle par defaut:
 
-- `https://api.shinederu.ch/box`
-- `https://api.shinederu.ch/auth`
+- API Box: `https://api.shinederu.ch/box/`
+- API Auth: `https://api.shinederu.ch/auth/`
 
-Override possible dans `index.html`:
+Pages publiques gerees par le frontend:
+
+- `https://box.shinederu.ch/`
+- `https://box.shinederu.ch/s/<token>/<nom-du-fichier>`
+- compatibilite historique: `https://box.shinederu.ch/?share=<token>`
+
+Overrides possibles dans `index.html`:
 
 - `window.__SHINEDEBOX_API_BASE__`
 - `window.__SHINEDEBOX_AUTH_API_BASE__`
 
-## Authentification
+## Authentification et permissions
 
-- Connexion via API auth centralisee.
-- Session partagee domaine via cookie `sid`.
-- Acces Box reserve au droit central `box.files.manage` ou au super-admin global, controle cote `App-ShinedeBox-API`.
-- Les utilisateurs autorises accedent a une bibliotheque commune: les fichiers uploades par un utilisateur autorise sont visibles et gerables par les autres utilisateurs autorises.
-- Il n'y a pas encore d'espace prive par utilisateur; `owner_user_id` est une information d'audit cote backend.
+- Authentification commune via `Module-Auth-API` et cookie `sid`.
+- Les identifiants sont envoyes a `https://api.shinederu.ch/auth/`.
+- L'acces metier est controle uniquement par `App-ShinedeBox-API`.
+- Permission stable requise: `box.files.manage`.
+- `core.super_admin` donne le bypass global via le service partage
+  `ProjectAccessService`.
 
-## Fonctionnalites UI
+Les utilisateurs autorises accedent aujourd'hui a une bibliotheque commune. Il
+n'existe pas encore d'espace prive par utilisateur; `owner_user_id` est une
+information d'audit cote backend.
+
+## Base de donnees
+
+Le frontend ne se connecte pas a MySQL. Les donnees ShinedeBox sont gerees par
+`App-ShinedeBox-API` dans le schema partage `ShinedeCore`, tables `box_*`.
+
+## Dossiers runtime et fichiers partages
+
+- Frontend public: `P:\PROD\ShinedeBox`
+- Stockage persistant proprietaire: `P:\PROD\ShinedeBoxStorage\files`
+- API runtime: `P:\PROD\API\box`
+
+Les fichiers utilisateur ne doivent jamais etre stockes dans le dossier frontend
+public. Ils restent hors webroot et sont servis par `download.php`.
+
+## Temps reel et evenements
+
+Aucun flux Mercure n'est publie ou consomme actuellement. La bibliotheque se
+resynchronise par HTTP via `list.php` au chargement, apres action utilisateur et
+toutes les 15 secondes quand la session Box est active.
+
+Si un flux temps reel est ajoute plus tard, il doit passer par Mercure et rester
+reconstructible via l'API HTTP. Topics attendus:
+
+```text
+https://api.shinederu.ch/box/topics/files
+https://api.shinederu.ch/box/topics/files/{public_id}
+```
+
+## Dependances inter-projets
+
+- `App-ShinedeBox-API`: proprietaire des actions fichiers et partages.
+- `Module-Auth-API`: login, logout, sessions `sid`.
+- `Module-ShinedeCore-PHP`: permissions centralisees via le backend.
+
+Le frontend ne doit pas ecrire dans les tables ou dossiers d'un autre projet.
+
+## Configuration
+
+La configuration publique est dans `index.html`:
+
+```html
+<script>
+  window.__SHINEDEBOX_API_BASE__ = "https://api.shinederu.ch/box";
+  window.__SHINEDEBOX_AUTH_API_BASE__ = "https://api.shinederu.ch/auth";
+</script>
+```
+
+Aucune variable secrete n'est attendue cote frontend.
+
+## Fonctionnalites
 
 - Connexion Shinederu integree.
-- Header avec l'utilisateur courant, le role Box, l'import, le rafraichissement et la deconnexion.
-- Import via bouton `Importer un fichier` dans le header, ouvrant une modale dediee.
-- Drag & drop et selection classique dans la modale d'import.
-- Upload multi-fichiers avec progression, annulation et fermeture automatique si tout reussit.
-- Bibliotheque avec recherche, tri et statistiques.
-- Selection d'un fichier par clic sur toute sa carte; le bouton `Telecharger` reste une action directe.
-- Panneau detail lateral pour telecharger, renommer ou supprimer le fichier selectionne.
+- Bibliotheque commune avec recherche, tri et statistiques.
+- Import multi-fichiers par modale, selection classique ou drag and drop.
+- Progression et annulation d'upload.
+- Selection d'un fichier, telechargement, renommage et soft delete via l'API.
 - Creation, copie et revocation de liens publics.
-- Vue publique `/s/<token>/<nom-du-fichier>` pour telechargement sans session.
-- Compatibilite conservee avec l'ancien format `?share=<token>`.
-- Rafraichissement automatique toutes les 15 secondes si la session admin est active.
-- Responsive mobile: le header se replie en actions empilees, la liste passe en cartes verticales et la modale reste limitee a la hauteur viewport.
+- Vue publique de partage sans session.
+- Responsive mobile.
+
+## Verifications
+
+```powershell
+cd P:\DEV\GitHub\App-ShinedeBox
+node --check script.js
+```
 
 ## Deploiement
 
-Aucun build n'est necessaire. Apres verification, synchroniser les fichiers deployables vers la production:
+Aucun build n'est necessaire. Depuis le repo source:
 
 ```powershell
-Copy-Item index.html,script.js,style.css P:\PROD\ShinedeBox\ -Force
+Copy-Item -LiteralPath index.html,script.js,style.css -Destination P:\PROD\ShinedeBox -Force
 ```
 
-## Verification locale
+Apres copie, verifier que `P:\PROD\ShinedeBox` ne contient que les artefacts
+publics necessaires.
 
-```bash
-node --check script.js
-```
+## Notes de reprise
+
+- Le repo frontend est volontairement statique.
+- `Nginx/` est une reference de configuration, pas un artefact de deploiement
+  frontend.
+- Les anciens chemins `/api/` du domaine `box.shinederu.ch` ne sont plus le
+  contrat public; utiliser `https://api.shinederu.ch/box/`.
+- Le backend est la source de verite pour auth, permissions, DB, stockage et
+  liens publics.
