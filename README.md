@@ -1,6 +1,6 @@
 # ShinedeBox Frontend
 
-Interface statique de ShinedeBox, connectee au backend `API/box`.
+Interface statique de ShinedeBox, connectee au backend source `App-ShinedeBox-API`, deploye sous `PROD/API/box`.
 
 ShinedeBox sert de service d'hebergement et de partage de fichiers: depot, bibliotheque commune, details fichier, liens publics et telechargements controles par l'API.
 
@@ -29,7 +29,7 @@ Override possible dans `index.html`:
 
 - Connexion via API auth centralisee.
 - Session partagee domaine via cookie `sid`.
-- Acces Box reserve au droit central `box.files.manage` ou au super-admin global, controle cote `API/box`.
+- Acces Box reserve au droit central `box.files.manage` ou au super-admin global, controle cote `App-ShinedeBox-API`.
 - Les utilisateurs autorises accedent a une bibliotheque commune: les fichiers uploades par un utilisateur autorise sont visibles et gerables par les autres utilisateurs autorises.
 - Il n'y a pas encore d'espace prive par utilisateur; `owner_user_id` est une information d'audit cote backend.
 
