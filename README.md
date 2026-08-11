@@ -12,6 +12,13 @@ parle jamais directement a MySQL, au stockage disque, a Mercure ou a une
 infrastructure locale. Toutes les commandes metier passent par
 `App-ShinedeBox-API`, proprietaire de la logique fichiers.
 
+## Statut produit
+
+ShinedeBox est maintenu a la demande. Il peut recevoir une correction ou une
+petite evolution lorsqu'un besoin concret apparait, sans roadmap proactive
+permanente. Une idee non priorisee reste un parking; preferer le plus petit
+changement complet.
+
 ## Repo et deploiement
 
 - Repo source: `P:\DEV\GitHub\App-ShinedeBox`
@@ -136,26 +143,10 @@ l'etat depuis HTTP:
 - toutes les 15 secondes quand la session Box est active;
 - au retour de visibilite de l'onglet.
 
-Si un flux temps reel est ajoute plus tard, il doit utiliser Mercure pour les
-evenements ou snapshots et rester reconstructible par API HTTP.
-
-Topics recommandes:
-
-```text
-https://api.shinederu.ch/box/topics/files
-https://api.shinederu.ch/box/topics/files/{public_id}
-```
-
-Types recommandes:
-
-```text
-box.file.created
-box.file.renamed
-box.file.deleted
-box.share.created
-box.share.revoked
-box.file.downloaded
-```
+Le rafraichissement HTTP actuel est suffisant. Ne pas ajouter de temps reel tant
+qu'un besoin explicite et observe ne montre pas le contraire. Si ce besoin
+apparait, definir alors le contrat minimal; ne pas preconstruire topics, types
+d'evenements ou infrastructure.
 
 ## Dependances inter-projets
 

@@ -20,6 +20,12 @@ Frontend statique de ShinedeBox. Il consomme `https://api.shinederu.ch/box/` et
 `https://api.shinederu.ch/auth/`, mais ne possede ni la DB, ni le stockage, ni
 les permissions.
 
+## Statut produit
+
+ShinedeBox est maintenu a la demande. Intervenir uniquement pour un besoin
+concret et borne; une idee documentee ne vaut pas priorisation. Ne pas ajouter
+de service, temps reel, stockage ou dependance durable « au cas ou ».
+
 ## Perimetre strict
 
 Modifier uniquement:
